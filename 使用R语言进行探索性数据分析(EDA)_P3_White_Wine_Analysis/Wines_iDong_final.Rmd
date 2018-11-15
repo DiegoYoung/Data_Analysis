@@ -1,0 +1,448 @@
+
+
+White Wine Exploratory Analysis by iDong_2018_08_20
+========================================================
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+library(ggplot2)
+library(corrplot)
+library(gridExtra)
+library(ggcorrplot)
+library(GGally)
+library(xtable)
+library(psych)
+```
+
+```{r echo=FALSE, load_the_Data}
+#载入数据集
+wqdata <- read.csv('wineQualityWhites.csv')
+#str(data)
+```
+###数据集介绍
+
+这个整⻬的数据集包含4,898 种⽩葡萄酒，及 11个量化每种酒化学成分的变量。⾄少 3 名葡萄酒专家对每种酒的质量
+进⾏了评分，分数在 0（⾮常差）和 10（⾮常好）之间。对每一种葡萄酒收集了11种化学特性。
+
+####数据集对变量及单位
+
+输入变量(基于物理化学测试):
+
+- fixed acidity (固定酸度):大多数酸与葡萄酒固定或不挥发，不容易蒸发。
+
+- volatile acidity(挥发性酸):葡萄酒中醋酸的含量，过高会导致醋味不佳。
+
+- citric acid (柠檬酸):柠檬酸可以增加葡萄酒对“新鲜”和风味感。
+
+- residual sugar(残留糖):发酵停止后剩下的糖分。甜度标准在1g/L～45g/L。
+
+- chlorides (氯化物 ):酒中盐的含。
+
+- free sulfur dioxide (游离二氧化硫):它可以防止微生物的生长和葡萄酒的氧化。
+
+- total sulfur dioxide (总二氧化硫):但在游离SO2浓度超过50ppm时，SO2在葡萄酒的鼻子和口感中变得明显.
+
+- density (密度):取决于酒精和糖的比例。  
+
+- pH  (pH值):在0(酸)到14(碱)的范围内。描述葡萄酒的酸性或碱性;大多数葡萄酒的pH值在3-4之间。
+
+- sulphates (硫酸盐):种可导致二氧化硫(S02)水平的酒添加剂，具有抗菌和抗氧化作用。 
+
+- alcohol (酒精含量): 葡萄酒中酒精含量的百分比。 
+
+输出变量(基于感官数据):   
+
+- quality (score between 0 and 10) [质素(0至10分)]:0(最差)和10(最好)之间的离散分数
+
+```{r echo=FALSE, First_rows}
+head(wqdata)
+```
+
+```{r echo=FALSE,summary}
+summary(wqdata)
+```
+```{r echo=FALSE, Univariate_Plots3}
+plot.hist <- function(x.var, df, bw, labelstring, titlestring){
+  p1 <- ggplot(df, aes_string(x = x.var)) +
+    geom_histogram(binwidth = bw) + xlab(labelstring)+
+    labs(title=titlestring)
+  
+  p2 <- ggplot(df, aes_string(y = x.var, x=1)) +
+    geom_boxplot(color = 'blue') +
+  geom_jitter(aes_string(x = 1, y = x.var), alpha = 0.1) +
+  labs(y = labelstring, x = '',
+          title = titlestring) +
+  coord_flip()
+  
+  grid.arrange(p1, p2)}
+```
+
+```{r echo=FALSE, Univariate_Plots4}
+plot.hist('volatile.acidity', wqdata, 0.01,'Volatile Acidity (g/L)',"Volatile acidity distribution")
+```
+
+挥发性酸度右偏，许多离群值在0.45 g/L以上，中值为0.26 g/L，最小值为0.08 g/L。
+
+```{r echo=FALSE, Univariate_Plots5}
+plot.hist('citric.acid', wqdata, 0.01,'Citric Acid (g/dm^3)',"Citric Acid distribution")
+```
+
+柠檬酸呈正态分布,尽管有一个直方图的峰值0.5和0.75 g / dm ^ 3。此外，有几个离群值偏离与均值。
+
+```{r echo=FALSE, Univariate_Plots6}
+plot.hist('residual.sugar', wqdata, 0.3,'Residual Sugar (g/dm^3)',"Residual Sugar distribution")
+```
+
+剩余糖是较倾斜的特征,与大多数在第一四分位数的数据为1.7 g / dm ^ 3。有一些异常值超过20g / dm ^3。
+对其它进行log变换特性。
+
+```{r echo=FALSE, Hist_residual.sugar_log}
+ggplot(aes(x = residual.sugar), 
+         data = wqdata) +
+    geom_histogram(bins = 40) +
+    scale_x_log10() +
+    xlab('residual.sugar (g/dm^3)') +
+    theme(text = element_text(size = 8))
+```
+
+我们可以看到有一个很明显的双峰结构，表明发酵后剩下的糖要么很低要么很高，但不太可能处于中等水平。
+我试着画出其他的特征对数刻度，但没有显示交互特性。
+为了进一步研究这些特征的结构，我使用了box plot以及每个特征的直方图。
+
+```{r echo=FALSE, Hist_Box_fixed.acidity}
+f1 <- ggplot(aes(x = fixed.acidity),
+             data = wqdata) + 
+  geom_histogram(bins = 30) +
+  xlab('fixed.acidity (g/dm^3)')
+
+f2 <- ggplot(aes(x = 1, y = fixed.acidity),
+             data = wqdata) +
+  geom_boxplot(color = 'blue') +
+  geom_jitter(aes(x = 1, y = fixed.acidity), size = 0.5, alpha = 1/10) +
+  ylab('fixed.acidity (g/dm^3)') +
+  xlab('') +
+  coord_flip()
+
+grid.arrange(f1, f2)
+```
+
+可以看出分布是固定的。酸度相当对称，只有一小部分右偏态。它的两个尾部都有一些离群值，最大的在上面右边。
+
+```{r echo=FALSE, Hist_Box_volatile.acidity}
+f1 <- ggplot(aes(x = volatile.acidity),
+             data = wqdata) + 
+  geom_histogram(bins = 30) +
+  xlab('volatile.acidity (g/dm^3)')
+
+f2 <- ggplot(aes(x = 1, y = volatile.acidity),
+             data = wqdata) +
+  geom_boxplot(color = 'blue') +
+  geom_jitter(aes(x = 1, y = volatile.acidity), size = 0.5, alpha = 1/10) +
+  ylab('volatile.acidity (g/dm^3)') +
+  xlab('') +
+  coord_flip()
+
+grid.arrange(f1, f2)
+```
+
+挥发份的分布。酸度严重右偏，所有的离群值在右边。
+
+```{r echo=FALSE, Hist_Box_volatile.acidity_log}
+f1 <- ggplot(aes(x = volatile.acidity),
+             data = wqdata) + 
+  geom_histogram(bins = 30) +
+  scale_x_log10() +
+  xlab('volatile.acidity (g/dm^3)')
+
+f2 <- ggplot(aes(x = 1, y = volatile.acidity),
+             data = wqdata) +
+  geom_boxplot(color = 'blue') +
+  geom_jitter(aes(x = 1, y = volatile.acidity), size = 0.5, alpha = 1/10) +
+  scale_y_log10() +
+  ylab('volatile.acidity (g/dm^3)') +
+  xlab('') +
+  coord_flip()
+
+grid.arrange(f1, f2)
+```
+
+经过对数变换，我们得到了挥发物的酸度分布更多的对称。
+
+```{r echo=FALSE, Hist_Box_citric.acid}
+f1 <- ggplot(aes(x = citric.acid),
+             data = wqdata) + 
+  geom_histogram(bins = 30) +
+  xlab('citric.acid (g/dm^3)')
+
+f2 <- ggplot(aes(x = 1, y = citric.acid),
+             data = wqdata) +
+  geom_boxplot(color = 'blue') +
+  geom_jitter(aes(x = 1, y = citric.acid), size = 0.5, alpha = 1/10) +
+  ylab('citric.acid (g/dm^3)') +
+  xlab('') +
+  coord_flip()
+
+grid.arrange(f1, f2)
+```
+
+柠檬的分布。酸度大致对称。我尝试过使用log变换，但它并没有改善对称性
+多。我还注意到在0.5附近有一条有趣的垂直线，分析这可能来自于一些有着相同水果来源的葡萄酒。
+
+```{r echo=FALSE, Hist_Box_residual.sugar}
+f1 <- ggplot(aes(x = residual.sugar),
+             data = wqdata) + 
+  geom_histogram(bins = 30) +
+  xlab('residual.sugar (g/dm^3)')
+
+f2 <- ggplot(aes(x = 1, y = residual.sugar),
+             data = wqdata) +
+  geom_boxplot(color = 'blue') +
+  geom_jitter(aes(x = 1, y = residual.sugar), size = 0.5, alpha = 1/10) +
+  ylab('residual.sugar (g/dm^3)') +
+  xlab('') +
+  coord_flip()
+
+grid.arrange(f1, f2)
+```
+
+这是相同的双峰结构。从箱线图中，我们可以看到一个有趣的现象，但是奇怪的图案:在左边，这些点形成了垂
+直的线条，在它们之间分离，但是在右边，点只是随机展开。
+
+我也为其他特性做了相同的绘图，但不想全部展示。这里的逻辑是一样的:如果分布严重倾斜，
+我将尝试使用log变换使它更对称。
+
+我只是想展示酒精的结果，因为它是葡萄酒里重要的指标，我对其比较感兴趣。
+
+```{r echo=FALSE, Univariate_Plots10}
+plot.hist('pH', wqdata, 0.01,'pH',"pH distribution")
+```
+
+pH服从正态分布，均值为3.18，均值上下有几个离群值。
+
+```{r echo=FALSE, Univariate_Plots11}
+plot.hist('sulphates', wqdata, 0.01,'Sulphates (g/dm^3)',"Sulphates distribution")
+```
+
+硫酸盐略有倾斜,上面有一些异常值的均值0.4898,从约0.8克/ dm ^ 3。最小值为0.22,最大价值为1.08 g / dm ^ 3。
+
+```{r echo=FALSE, Hist_Box_alcohol}
+f1 <- ggplot(aes(x = alcohol),
+             data = wqdata) + 
+  geom_histogram(bins = 30) +
+  xlab('alcohol (% of volumn)')
+
+f2 <- ggplot(aes(x = 1, y = alcohol),
+             data = wqdata) +
+  geom_boxplot(color = 'blue') +
+  geom_jitter(aes(x = 1, y = alcohol), size = 0.5, alpha = 1/10) +
+  ylab('alcohol (% of volumn)') +
+  xlab('') +
+  coord_flip()
+
+grid.arrange(f1, f2)
+```
+
+葡萄酒中以单位体积中的酒精含量呈平面分布。
+
+```{r echo=FALSE, Plo}
+ggplot(aes(x = as.factor(quality)), data = wqdata)+
+       geom_bar()+
+       xlab("Wine Quality") + ylab("Count") +
+       ggtitle("Bar Plot of Wine Quality")
+```
+
+从上面的柱状图可以看出，数据集中的大多数葡萄酒都很好，质量在5到7之间。大多数葡萄酒的品质是6
+
+# 单变量分析
+
+### 你的数据集结构是什么？
+
+我使用白葡萄酒质量数据。总共有4898种不同的葡萄酒
+他们的品质从0(最差)到10(最好)。
+对于每一种葡萄酒，都有11种化学特征数据报告。
+某些单位。有些特性具有相当的倾斜分布，糖有一个非常明显的双峰结构。此外，酒精含量分布相当广泛。
+
+### 你对数据集内感兴趣的主要特性有哪些？
+
+人们感兴趣的主要特征是葡萄酒的质量，我在这里问的问题是白葡萄酒的质量是否能由其化学特性来预测的。
+
+### 你认为数据集内哪些其他特征可以帮助你探索兴趣特点？
+
+关于葡萄酒品质与化学特性的关系。就目前而言，我认为残糖、挥发性酸度和酒精将有助于我对我感兴趣的
+特征进行研究，因为前两个特征的分布是倾斜的，而酒精的分布相对平坦(大扩散)。
+
+### 您是否从数据集中现有的变量中创建了新的变量?
+
+NO
+
+### 在已经探究的特性中，是否存在任何异常分布？你是否对数据进行一些操作，如清洁、调整或改变数据的形式？如果是，你为什么会这样做？
+
+我对特征残糖进行了对数变换，因为它是一个高度右偏的特
+
+# Bivariate Plots Section双变量绘图选择
+
+```{r echo=FALSE}
+cor(wqdata) #查看数据表格
+wqdata$numquality <- as.numeric(wqdata$quality) #转换为数字
+wqmatrix <- cor(wqdata[c(2:12, 14)]) #选择除X和质量之外的所有列
+ggcorrplot(wqmatrix, type = "lower", hc.order = TRUE) 
+```
+
+从图中可以看出，以下关系具有很强的相关性:alcohol vs density, density vs residual.sugar, 
+density vs total.sulfur.dioxide, quality vs alcohol.让我们来探索酒精与其他变量之间的各种关系。
+
+```{r echo=FALSE, Bivariate_Plots}
+ggplot(wqdata, aes(factor(quality), density)) +
+geom_violin()
+```
+
+以上的图表明，一般来说，好酒的密度较低，少数异常值为6。这种关系对于在数据集中被评为质量最高的葡萄酒
+最为明显，在数据集中，几乎所有等级为9的葡萄酒的密度都在0.99左右。其他质量等级的密度范围有较大的差距。
+
+```{r echo=FALSE, Bivariate_Plots1}
+ggplot(wqdata, aes(factor(quality), alcohol)) +
+geom_violin() +
+geom_boxplot(width=.1)
+```
+
+以上图表明，一般来说，好酒的酒精含量较高。和密度一样，这种关系在质量等级为9的葡萄酒中表现得最为明显，
+在质量等级为9的葡萄酒中，大多数酒的体积百分比都在12以上。其他质量等级的酒精的范围有较大的差距。
+
+```{r echo=FALSE, Bivariate_Plots2}
+ggplot(data= wqdata, aes(x = wqdata$residual.sugar, y = wqdata$density)) + 
+  geom_point(alpha=0.1)
+```
+
+从上述散点图可以看出，密度与残糖呈正相关关系。然而,这种趋势始于残留糖1.5克/ dm ^ 3。当残糖值低于这个值时，密度与糖的关系不强。
+
+#  双变量分析
+
+### 谈谈你在这部分调查中观察到的一些关系。感兴趣的特性与数据集中的其他特性有何不同?
+
+从相关图中可以看出，游离二氧化硫与总二氧化硫之间存在正相关关系，这是因为游离二氧化硫是总二氧化硫的组成部分。
+从相关图表可以看出，酒精和密度呈负相关关系。此外，我发现残糖与密度呈正相关。相关图显示挥发性酸度在其他特征之间没有任何强相关性。
+
+### 您是否观察到其他特性(不是感兴趣的主要特性)之间有任何有趣的关系?
+
+固定酸度与pH值呈中度负相关，而挥发性酸度与pH值关系不强
+
+### 您是否观察到其他特性(不是感兴趣的主要特性)之间有任何有趣的关系?
+
+我发现的最强的正相关是密度和残糖之间的关系。酒精和密度之间的负相关最强。
+
+#  多变量分析
+
+
+
+```{r echo=FALSE, Multivariate_Plots3}
+ggplot(aes(x = wqdata$alcohol, y = wqdata$pH, color = factor(quality)), data = wqdata) +
+  geom_jitter(alpha = 0.2) +
+  scale_color_brewer(palette = "Blues") +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  ylim(2.7, 4) +
+  labs(y = 'Density',x = 'Alcohol') +
+  ggtitle("Density VS Alcohol VS Quality")
+```
+
+pH和酒精之间的散点分布基本持平，较好的葡萄酒酒精含量较高，pH值呈扩散趋势。
+
+
+
+```{r echo=FALSE, warning=FALSE, Multivariate_Plots4}
+ggplot(aes(x = wqdata$alcohol, y = wqdata$density, color = factor(quality)), data = wqdata) +
+  geom_jitter(alpha = 0.2) +
+  scale_color_brewer(palette = "Blues") +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  ylim(0.985, 1.005) +
+  labs(y = 'Density',x = 'Alcohol') +
+  ggtitle("Density VS Alcohol VS Quality")
+```
+
+密度与醇之间的散点图显示密度与醇之间呈负相关关系。好的葡萄酒密度低，酒精含量高。有一个离群值(可能与下面的相同)。
+
+
+
+```{r echo=FALSE, Multivariate_Plots5}
+ggplot(aes(x = wqdata$residual.sugar, y = wqdata$density, color = factor(quality)), data = wqdata) +
+  geom_jitter(alpha = 0.2) +
+  scale_color_brewer(palette = "Blues") +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  ylim(0.985, 1.045) +
+  labs(y = 'Density',x = 'Residual.suger') +
+  ggtitle("Density VS Residual.sugar VS Quality")
+```
+
+密度与糖之间的散点图显示了两者之间的正相关关系。有一个离群值的密度约为1.04 g / dm ^ 3,和残糖约65 g / dm ^ 3。正如我们之前看到的，评级较好的葡萄酒密度较低，含糖量较高。
+
+# 多变量分析
+
+### 谈谈你在这部分调查中观察到的一些关系。是否有一些特性在查看感兴趣的特性时互相增强?
+
+质量与酒精和密度之间的关系最为密切。此外，糖与密度有很强的负相关关系。由于评级较好的葡萄酒密度较低，因此含糖量较低。专家们似乎不太喜欢甜葡萄酒。
+
+### 这些特性之间是否存在有趣或惊人的联系呢？
+
+我发现有趣的是糖和密度是正相关的，因为我不认为这两个特征是相关的。
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
+
+------
+
+# 最终图与总结
+
+
+### 绘图一
+
+```{r echo=FALSE, Plot_One}
+ggplot(wqdata, aes(factor(quality), alcohol)) +
+geom_violin() +
+  geom_boxplot(width=.2) +
+labs(title="Alcohol vs Quality")+
+xlab("Quality")+ ylab("Alcohol (% by Volume)")
+```
+
+### 描述一
+
+这幅小提琴和箱线图显示了数据集中两个变量之间最强的关系:酒精和质量之间的关系。有趣的是，专家们对每瓶酒精含量较高的葡萄酒给出了更高的分数，可见好的白葡萄酒酒精含量较高。
+
+### 绘图二
+
+
+```{r echo=FALSE, Multivariate_Plots6}
+ggplot(aes(x = residual.sugar, y = density, color = factor(quality)), data = wqdata) +
+  geom_jitter(alpha = 0.2) +
+  scale_color_brewer(palette = "Blues") +
+  geom_smooth(method = "lm", se = FALSE,size=1) +
+  ylim(0.985, 1.045) +
+  labs(y = 'Density',x = 'Residual.suger') +
+  ggtitle("Density VS Residual.sugar VS Quality")
+```
+
+
+###  描述二
+
+这个散点图表明糖和密度是正相关的。另外，对于同样的甜度，酒精含量较高的葡萄酒密度较低。
+
+###  绘图三
+
+```{r echo=FALSE, Plot_Three}
+ggplot(aes(x = as.factor(quality)), data = wqdata)+
+       geom_bar()+
+       xlab("wqdata Quality") + ylab("Count") +
+       ggtitle("Wine Quality Whites")
+```
+
+### 描述三
+
+数据集中的大多数葡萄酒的品质是6。此外，质量呈正态分布，大多数葡萄酒的等级在5到7之间。
+
+------
+
+#  反思
+
+从这个探索性的分析中，我们发现好的葡萄酒往往含有更多的酒精和更低的密度。由于密度随着糖的增加而增加，过多的糖可能对葡萄酒的味道不利，而酒精对葡萄酒的味道有利。这种分析是基于相关性的，因此它并不意味着变量之间有任何因果关系。
+
+分析的局限性在于，数据集是针对来自特定地区的葡萄酒的，因此变量之间的关系可能不适用于不同类型的葡萄酒。此外，不同的专家可能会对葡萄酒的质量做出不同的判断。为了进一步研究这些数据，我们可以做一个受控实验，或者使用机器学习来创建基于此数据集的预测模型。
+
